@@ -10,6 +10,11 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
+
 public class ThreePlayers extends AppCompatActivity {
     // Log tag variable
     private static final String TAG = "ThreePlayers";
@@ -19,8 +24,11 @@ public class ThreePlayers extends AppCompatActivity {
     private int mCounter1 = 0;
     private int mCounter2 = 0;
     private int mCounter3 = 0;
-    Button btn;
-    TextView txv;
+    private Button btn;
+    private TextView txv;
+    private String serverName = "time.nist.gov"; //I need another address for my application
+    private int serverPort = 13; //I need to find a port number for my server
+
     /**
      * When the instance (activity) get's launched, this method will be called first.
      *
@@ -41,15 +49,19 @@ public class ThreePlayers extends AppCompatActivity {
         startActivity(intent);
     }
     public void addLife1(View v){
-        Log.d(TAG, "addLife: Method called");
+        Log.d(TAG, "Getting Time: Method called");
         Button btn = findViewById(R.id.button1);
-        TextView txv = findViewById(R.id.textView1);
+
 
         btn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mCounter1 ++;
-                txv.setText(Integer.toString(mCounter1));
+                //mCounter1 ++;         // commenting these out for now to test server/client code
+                //txv.setText(Integer.toString(mCounter1));
+                TextView txv = findViewById(R.id.textView1);
+                NistTimeClient runnable = new NistTimeClient(serverName, serverPort, txv);
+                new Thread(runnable).start();
+
             }
         });
     }
@@ -117,5 +129,37 @@ public class ThreePlayers extends AppCompatActivity {
                 txv.setText(Integer.toString(mCounter3));
             }
         });
+    }
+    private class NistTimeClient implements Runnable{
+
+        private String serverName;
+        private int serverPort;
+        public NistTimeClient(String serverName, int serverPort, TextView txv) {
+            this.serverName = serverName;
+            this.serverPort = serverPort;
+        }
+        @Override
+        public void run() {
+
+            try{
+                Socket socket = new Socket(serverName, serverPort);
+                
+                BufferedReader br = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+                br.readLine(); //this represents current line which starts empty.
+                String recTime = br.readLine().substring(6,23);
+                socket.close();
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        txv.setText(recTime);
+                    }
+                });
+            }   catch (IOException e){
+                    e.printStackTrace();
+            }
+
+        }
+
     }
 }
